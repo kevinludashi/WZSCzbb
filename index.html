@@ -34,9 +34,33 @@
             color: red;
             cursor: pointer;
         }
+		
+		/* 设置页脚的样式 */
+		        footer {
+		            font-size: 14px; /* 字体大小 */
+		            color: #888; /* 字体颜色 */
+		            margin-top: 10px; /* 顶部外边距 */
+		            text-shadow: 1px 1px 4px rgba(0, 0, 0, 0.1); /* 给页脚添加阴影 */
+					text-align: center;
+		        }
+		
     </style>
 </head>
 <body>
+
+        <h1 style="<font size="20PX" color="red">使用教程</h1>
+	    <ul>
+	        <li>1、先添加人员名称；</li>
+	        <li>2、再添加分组；</li>
+	        <li>3、分组里选中人员名单，名单旁添加人员；</li>
+	        <li>4、组里多个人员就重复操作第3步；</li>
+	        <li>5、分完组后，设置轮班周期（天），如一周轮一次就填 7 ；</li>
+			<li>6、填完轮班周期后点击最下方添加排班，然后弹窗中输入 格式例如：“2024-12-02”；</li>
+			<li>7、填完日期后点击ok，即可自动生成排版信息，然后点击最下放的下载表格即可；</li>
+	    </ul>
+
+
+	
     <h2>排班表</h2>
 
     <div>
@@ -83,6 +107,10 @@
 
     <button class="add-shift-btn" id="add-shift">添加排班</button>
     <button class="download-btn" id="download-excel">下载表格</button>
+	
+	<!-- 页脚，显示制作人信息 -->
+	    <footer>作者:Kevin鲁大师 / 仅供学习交流 勿用于商业 / 未经许可 盗用必究</footer>
+	<!-- 导入提示框 -->
 
     <script>
         let people = []; // 已添加的人员
