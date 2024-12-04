@@ -1,0 +1,262 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>排班表</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.17.4/xlsx.full.min.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        table, th, td {
+            border: 1px solid #ddd;
+        }
+        th, td {
+            padding: 8px;
+            text-align: center;
+        }
+        .add-person-btn, .add-shift-btn, .download-btn {
+            margin-top: 20px;
+        }
+        .group-box {
+            margin-bottom: 10px;
+        }
+        .group-box select {
+            width: 200px;
+            height: 100px;
+        }
+        .delete-btn {
+            color: red;
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body>
+    <h2>排班表</h2>
+
+    <div>
+        <label for="person-name">添加人员：</label>
+        <input type="text" id="person-name" placeholder="输入姓名">
+        <button id="add-person">添加人员</button>
+    </div>
+
+    <div id="person-list">
+        <h3>已添加人员：</h3>
+        <ul id="people"></ul>
+    </div>
+
+    <div>
+        <h3>分组管理：</h3>
+        <div id="groups">
+            <!-- 分组管理区域 -->
+        </div>
+        <button id="add-group">添加组</button>
+    </div>
+
+    <div>
+        <label for="shift-cycle">设置轮班周期（天）：</label>
+        <input type="number" id="shift-cycle" min="1" placeholder="例如：14天">
+    </div>
+
+    <div>
+        <label for="months">排班时间（6个月）：</label>
+        <input type="number" id="months" min="1" value="6">
+    </div>
+
+    <table id="schedule-table">
+        <thead>
+            <tr>
+                <th>日期</th>
+                <th>人员</th>
+                <th>班次</th>
+            </tr>
+        </thead>
+        <tbody>
+            <!-- 排班数据行将在此处插入 -->
+        </tbody>
+    </table>
+
+    <button class="add-shift-btn" id="add-shift">添加排班</button>
+    <button class="download-btn" id="download-excel">下载表格</button>
+
+    <script>
+        let people = []; // 已添加的人员
+        let groups = []; // 分组信息
+        let shifts = []; // 排班数据
+        let shiftCycle = 14; // 默认14天轮班周期
+        let monthsToSchedule = 6; // 默认排班6个月
+        let currentGroup = 0;
+
+        // 添加人员
+        document.getElementById('add-person').addEventListener('click', function() {
+            const personName = document.getElementById('person-name').value;
+            if (personName && !people.includes(personName)) {
+                people.push(personName);
+                renderPeopleList();
+                document.getElementById('person-name').value = ''; // 清空输入框
+            }
+        });
+
+        // 渲染已添加的人员列表
+        function renderPeopleList() {
+            const personList = document.getElementById('people');
+            personList.innerHTML = ''; // 清空当前人员列表
+            people.forEach((person, index) => {
+                const li = document.createElement('li');
+                li.textContent = person;
+                const deleteBtn = document.createElement('span');
+                deleteBtn.textContent = ' 删除';
+                deleteBtn.classList.add('delete-btn');
+                deleteBtn.addEventListener('click', () => deletePerson(index));
+                li.appendChild(deleteBtn);
+                personList.appendChild(li);
+            });
+        }
+
+        // 删除人员
+        function deletePerson(index) {
+            people.splice(index, 1);
+            renderPeopleList();
+            renderGroups(); // 更新分组
+        }
+
+        // 设置轮班周期
+        document.getElementById('shift-cycle').addEventListener('input', function() {
+            shiftCycle = parseInt(document.getElementById('shift-cycle').value) || 14; // 默认14天
+        });
+
+        // 设置排班月份（6个月）
+        document.getElementById('months').addEventListener('input', function() {
+            monthsToSchedule = parseInt(document.getElementById('months').value) || 6; // 默认排6个月
+        });
+
+        // 添加组
+        document.getElementById('add-group').addEventListener('click', function() {
+            const groupId = groups.length + 1;
+            const group = { id: groupId, members: [] };
+            groups.push(group);
+            renderGroups();
+        });
+
+        // 渲染分组
+        function renderGroups() {
+            const groupContainer = document.getElementById('groups');
+            groupContainer.innerHTML = ''; // 清空现有分组
+            groups.forEach((group, groupIndex) => {
+                const groupDiv = document.createElement('div');
+                groupDiv.classList.add('group-box');
+                groupDiv.innerHTML = `
+                    <h4>组 ${group.id}</h4>
+                    <div>成员：</div>
+                    <ul id="group-${group.id}-members">
+                        ${group.members.map((member, memberIndex) => {
+                            return `<li>${member} <span class="delete-btn" onclick="removeMemberFromGroup(${group.id}, ${memberIndex})">删除</span></li>`;
+                        }).join('')}
+                    </ul>
+                    <select id="group-${group.id}-select" multiple>
+                        ${people.map((person) => {
+                            return `<option value="${person}">${person}</option>`;
+                        }).join('')}
+                    </select>
+                    <button onclick="addMemberToGroup(${group.id})">添加成员</button>
+                    <button class="delete-btn" onclick="deleteGroup(${groupIndex})">删除组</button>
+                `;
+                groupContainer.appendChild(groupDiv);
+            });
+        }
+
+        // 添加成员到组
+        function addMemberToGroup(groupId) {
+            const select = document.getElementById(`group-${groupId}-select`);
+            const selectedOptions = Array.from(select.selectedOptions);
+            const newMembers = selectedOptions.map(option => option.value);
+
+            newMembers.forEach(member => {
+                if (!groups[groupId - 1].members.includes(member)) {
+                    groups[groupId - 1].members.push(member);
+                }
+            });
+
+            renderGroups(); // 重新渲染组
+        }
+
+        // 从组中删除成员
+        function removeMemberFromGroup(groupId, memberIndex) {
+            groups[groupId - 1].members.splice(memberIndex, 1);
+            renderGroups(); // 重新渲染组
+        }
+
+        // 删除分组
+        function deleteGroup(groupIndex) {
+            groups.splice(groupIndex, 1);
+            renderGroups();
+        }
+
+        // 添加排班
+        document.getElementById('add-shift').addEventListener('click', function() {
+            if (groups.length === 0 || people.length < 2) {
+                alert("请先添加人员并分组！");
+                return;
+            }
+
+            // 清除上次的排班数据
+            shifts = [];
+
+            let startDate = prompt("请输入开始日期（格式：YYYY-MM-DD）：");
+            if (!startDate) return;
+
+            let cycle = shiftCycle; // 获取轮班周期
+            let months = monthsToSchedule; // 获取排班月份
+
+            // 获取所有组的轮班数据
+            let shiftGroups = groups.map(group => {
+                return { group: group.id, members: group.members };
+            });
+
+            // 排班，按组轮流安排
+            let totalDays = months * 30; // 估算6个月的天数，假设每月30天
+            for (let i = 0; i < totalDays / cycle; i++) { // 每个周期分配一次排班
+                let currentDate = new Date(startDate);
+                currentDate.setDate(currentDate.getDate() + i * cycle); // 每次增加轮班周期天数
+                let formattedDate = currentDate.toISOString().split('T')[0]; // 格式化为YYYY-MM-DD
+
+                let currentShiftGroup = shiftGroups[currentGroup % shiftGroups.length];
+                shifts.push({
+                    date: formattedDate,
+                    people: currentShiftGroup.members.join(' 和 '),
+                    shift: `值班`
+                });
+
+                currentGroup++; // 更新当前组
+            }
+
+            renderTable(); // 渲染新的排班表
+        });
+
+        // 渲染排班表
+        function renderTable() {
+            const tableBody = document.getElementById('schedule-table').getElementsByTagName('tbody')[0];
+            tableBody.innerHTML = ''; // 清空当前的排班表
+            shifts.forEach(shift => {
+                const row = tableBody.insertRow();
+                row.insertCell(0).textContent = shift.date;
+                row.insertCell(1).textContent = shift.people;
+                row.insertCell(2).textContent = shift.shift;
+            });
+        }
+
+        // 下载Excel
+        document.getElementById('download-excel').addEventListener('click', function() {
+            const ws = XLSX.utils.table_to_sheet(document.getElementById('schedule-table'));
+            const wb = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(wb, ws, '排班表');
+            XLSX.writeFile(wb, '排班表.xlsx');
+        });
+    </script>
+</body>
+</html>
